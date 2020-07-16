@@ -10,3 +10,4 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8"
 dirs-next = "1.0.1"
+enum-map = "0.6.2"

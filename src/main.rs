@@ -1,6 +1,6 @@
 use dirs_next as dirs;
+use enum_map::{Enum, EnumMap};
 use serde::Serialize;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -42,25 +42,47 @@ struct ColorList<'a> {
     white: &'a str,
 }
 
-fn get_color_name(n: usize) -> &'static str {
-    match n {
-        0 => "color1",
-        1 => "color2",
-        2 => "color3",
-        3 => "color4",
-        4 => "color5",
-        5 => "color6",
-        6 => "color7",
-        7 => "color8",
-        8 => "color9",
-        9 => "color10",
-        10 => "color11",
-        11 => "color12",
-        12 => "color13",
-        13 => "color14",
-        14 => "color15",
-        15 => "color16",
-        _ => panic!("No such color!"),
+#[derive(Enum)]
+enum Color {
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+    Seven,
+    Eight,
+    Nine,
+    Ten,
+    Eleven,
+    Twelve,
+    Thirteen,
+    Fourteen,
+    Fifteen,
+    Sixteen,
+}
+
+impl Color {
+    pub fn get_color(n: usize) -> Color {
+        match n {
+            0 => Color::One,
+            1 => Color::Two,
+            2 => Color::Three,
+            3 => Color::Four,
+            4 => Color::Five,
+            5 => Color::Six,
+            6 => Color::Seven,
+            7 => Color::Eight,
+            8 => Color::Nine,
+            9 => Color::Ten,
+            10 => Color::Eleven,
+            11 => Color::Twelve,
+            12 => Color::Thirteen,
+            13 => Color::Fourteen,
+            14 => Color::Fifteen,
+            15 => Color::Sixteen,
+            _ => panic!("No such color!"),
+        }
     }
 }
 
@@ -70,42 +92,45 @@ fn main() -> io::Result<()> {
 
     let f = File::open(colors_path)?;
     let f = BufReader::new(f);
-    let c: HashMap<&str, String> = f
-        .lines()
-        .enumerate()
-        .map(|(i, c)| (get_color_name(i), "0x".to_string() + &c.unwrap()[1..]))
-        .collect();
+    let c: EnumMap<Color, String> =
+        f.lines()
+            .enumerate()
+            .fold(EnumMap::new(), |mut map, (i, c)| {
+                let color = Color::get_color(i);
+                map[color] = c.unwrap();
+                map
+            });
 
     let primary = GroundList {
-        background: &c["color1"],
-        foreground: &c["color2"],
+        background: &c[Color::One],
+        foreground: &c[Color::Two],
     };
 
     let cursor = CursorList {
-        text: &c["color1"],
-        cursor: &c["color8"],
+        text: &c[Color::One],
+        cursor: &c[Color::Eight],
     };
 
     let normal = ColorList {
-        black: &c["color1"],
-        red: &c["color2"],
-        green: &c["color3"],
-        yellow: &c["color4"],
-        blue: &c["color5"],
-        magenta: &c["color6"],
-        cyan: &c["color7"],
-        white: &c["color8"],
+        black: &c[Color::One],
+        red: &c[Color::Two],
+        green: &c[Color::Three],
+        yellow: &c[Color::Four],
+        blue: &c[Color::Five],
+        magenta: &c[Color::Six],
+        cyan: &c[Color::Seven],
+        white: &c[Color::Eight],
     };
 
     let bright = ColorList {
-        black: &c["color9"],
-        red: &c["color10"],
-        green: &c["color11"],
-        yellow: &c["color12"],
-        blue: &c["color13"],
-        magenta: &c["color14"],
-        cyan: &c["color15"],
-        white: &c["color16"],
+        black: &c[Color::Nine],
+        red: &c[Color::Ten],
+        green: &c[Color::Eleven],
+        yellow: &c[Color::Twelve],
+        blue: &c[Color::Thirteen],
+        magenta: &c[Color::Fourteen],
+        cyan: &c[Color::Fifteen],
+        white: &c[Color::Sixteen],
     };
 
     let mut conf_path = dirs::config_dir().unwrap();
@@ -120,6 +145,7 @@ fn main() -> io::Result<()> {
     };
 
     // [4..] because I want to skip the first 4 bytes (---\n) as this file will later be appended
+    // to the main config file
     let colors =
         &serde_yaml::to_string(&ColorFile { colors }).expect("Failed to convert to string")[4..];
 
