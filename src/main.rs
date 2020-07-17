@@ -97,13 +97,13 @@ fn main() -> io::Result<()> {
             .enumerate()
             .fold(EnumMap::new(), |mut map, (i, c)| {
                 let color = Color::get_color(i);
-                map[color] = c.unwrap();
+                map[color] = "0x".to_string() + &c.unwrap()[1..];
                 map
             });
 
     let primary = GroundList {
         background: &c[Color::One],
-        foreground: &c[Color::Two],
+        foreground: "0xFFFFFF",
     };
 
     let cursor = CursorList {
