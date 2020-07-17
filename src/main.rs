@@ -103,7 +103,7 @@ fn main() -> io::Result<()> {
 
     let primary = GroundList {
         background: &c[Color::One],
-        foreground: "0xFFFFFF",
+        foreground: &c[Color::Sixteen],
     };
 
     let cursor = CursorList {
