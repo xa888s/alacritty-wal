@@ -1,6 +1,6 @@
 mod color;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use color::{Color, ColorFile};
 use dirs_next as dirs;
 use enum_map::EnumMap;
@@ -27,7 +27,12 @@ fn main() -> Result<()> {
     let mut colors_path = dirs::cache_dir().unwrap();
     colors_path.push("wal/colors");
 
-    let f = File::open(colors_path)?;
+    let f = File::open(&colors_path).with_context(|| {
+        format!(
+            "Failed to open wal colors from path: {}",
+            colors_path.display()
+        )
+    })?;
     let f = BufReader::new(f);
     let c: EnumMap<Color, String> =
         f.lines()
