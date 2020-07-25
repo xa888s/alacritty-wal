@@ -1,92 +1,29 @@
+mod color;
+
+use anyhow::Result;
+use color::{Color, ColorFile};
 use dirs_next as dirs;
-use enum_map::{Enum, EnumMap};
-use serde::Serialize;
-use std::fs::File;
+use enum_map::EnumMap;
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
-use std::io::{self, BufReader};
+use std::io::BufReader;
+use structopt::StructOpt;
 
-#[derive(Serialize)]
-struct ColorFile<'a> {
-    colors: Colors<'a>,
+#[derive(StructOpt)]
+#[structopt(
+    name = "alacritty_wal", 
+    version = env!("CARGO_PKG_VERSION"), 
+    about = "Gets wal colors and modifies alacritty config to add them."
+)]
+struct Opt {
+    /// If passed, a colors.yml file will be created in the alacritty configuration directory, instead of overwriting the current config.
+    /// This file can be concatenated with the original config (as long as it doesn't contain a colors section) to create a whole new config
+    #[structopt(short, long)]
+    manual: bool,
 }
 
-#[derive(Serialize)]
-struct Colors<'a> {
-    primary: GroundList<'a>,
-    cursor: CursorList<'a>,
-    normal: ColorList<'a>,
-    bright: ColorList<'a>,
-}
-
-#[derive(Serialize)]
-struct GroundList<'a> {
-    background: &'a str,
-    foreground: &'a str,
-}
-
-#[derive(Serialize)]
-struct CursorList<'a> {
-    text: &'a str,
-    cursor: &'a str,
-}
-
-#[derive(Serialize)]
-struct ColorList<'a> {
-    black: &'a str,
-    red: &'a str,
-    green: &'a str,
-    yellow: &'a str,
-    blue: &'a str,
-    magenta: &'a str,
-    cyan: &'a str,
-    white: &'a str,
-}
-
-#[derive(Enum)]
-enum Color {
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    Eight,
-    Nine,
-    Ten,
-    Eleven,
-    Twelve,
-    Thirteen,
-    Fourteen,
-    Fifteen,
-    Sixteen,
-}
-
-impl Color {
-    pub fn get_color(n: usize) -> Color {
-        match n {
-            0 => Color::One,
-            1 => Color::Two,
-            2 => Color::Three,
-            3 => Color::Four,
-            4 => Color::Five,
-            5 => Color::Six,
-            6 => Color::Seven,
-            7 => Color::Eight,
-            8 => Color::Nine,
-            9 => Color::Ten,
-            10 => Color::Eleven,
-            11 => Color::Twelve,
-            12 => Color::Thirteen,
-            13 => Color::Fourteen,
-            14 => Color::Fifteen,
-            15 => Color::Sixteen,
-            _ => panic!("No such color!"),
-        }
-    }
-}
-
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
+    let opt = Opt::from_args();
     let mut colors_path = dirs::cache_dir().unwrap();
     colors_path.push("wal/colors");
 
@@ -101,55 +38,33 @@ fn main() -> io::Result<()> {
                 map
             });
 
-    let primary = GroundList {
-        background: &c[Color::One],
-        foreground: &c[Color::Sixteen],
-    };
-
-    let cursor = CursorList {
-        text: &c[Color::One],
-        cursor: &c[Color::Eight],
-    };
-
-    let normal = ColorList {
-        black: &c[Color::One],
-        red: &c[Color::Two],
-        green: &c[Color::Three],
-        yellow: &c[Color::Four],
-        blue: &c[Color::Five],
-        magenta: &c[Color::Six],
-        cyan: &c[Color::Seven],
-        white: &c[Color::Eight],
-    };
-
-    let bright = ColorList {
-        black: &c[Color::Nine],
-        red: &c[Color::Ten],
-        green: &c[Color::Eleven],
-        yellow: &c[Color::Twelve],
-        blue: &c[Color::Thirteen],
-        magenta: &c[Color::Fourteen],
-        cyan: &c[Color::Fifteen],
-        white: &c[Color::Sixteen],
-    };
+    let colors = Color::get_colors(&c);
 
     let mut conf_path = dirs::config_dir().unwrap();
-    conf_path.push("alacritty/colors.yml");
+    if opt.manual {
+        conf_path.push("alacritty/colors.yml");
 
-    let mut conf = File::create(conf_path)?;
-    let colors = Colors {
-        primary,
-        cursor,
-        normal,
-        bright,
-    };
+        let mut conf_file = File::create(conf_path)?;
 
-    // [4..] because I want to skip the first 4 bytes (---\n) as this file will later be appended
-    // to the main config file
-    let colors =
-        &serde_yaml::to_string(&ColorFile { colors }).expect("Failed to convert to string")[4..];
+        let colors = serde_yaml::to_vec(&ColorFile { colors })?;
 
-    conf.write(colors.as_bytes())?;
+        // [4..] because I want to skip the first 4 bytes (---\n) as this file will later be appended
+        // to the main config file
+        conf_file.write(&colors[4..])?;
+    } else {
+        conf_path.push("alacritty/alacritty.yml");
+
+        let conf_file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&conf_path)?;
+
+        let mut conf: serde_yaml::Value = serde_yaml::from_reader(&conf_file)?;
+
+        conf["colors"] = serde_yaml::to_value(colors)?;
+        serde_yaml::to_writer(File::create(&conf_path)?, &conf)?;
+    }
 
     Ok(())
 }
