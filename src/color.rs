@@ -59,6 +59,7 @@ pub enum Color {
 }
 
 impl Color {
+    // fast color search ;)
     pub fn get_color(n: usize) -> Color {
         match n {
             0 => Color::One,

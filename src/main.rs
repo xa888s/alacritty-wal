@@ -9,6 +9,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use structopt::StructOpt;
 
+// make old method optional
 #[derive(StructOpt)]
 #[structopt(
     name = "alacritty_wal", 
